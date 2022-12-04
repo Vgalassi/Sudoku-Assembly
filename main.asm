@@ -1,24 +1,56 @@
 .model small
 .stack 14h
 .data
-    matriz  db 9 dup('1')
-            db 9 dup('1')
-            db 9 dup('1')
-            db 9 dup('1')
-            db 9 dup('1')
-            db 9 dup('1')
-            db 9 dup('1')
-            db 9 dup('1')
-            db 9 dup('1')
+    matriz  db '5','3',2 dup(' '),'7',4 dup(' ')
+            db '6',2 dup(' '),'1','9','5',3 dup(' ')
+            db ' ','9','8',3 dup(' '),' ','6',' '
+            db '8',3 dup(' '),'6',3 dup(' '),'3'
+            db '4',2 dup(' '),'8',' ','3',2 dup(' '),'1'
+            db '7',3 dup(' '),'2',3 dup(' '),'6'
+            db ' ','6',4 dup(' '),'2','8',' '
+            db 3 dup(' '),'4','1','9',2 dup(' '),'5'
+            db 4 dup(' '),'8',2 dup(' '),'7','9'
 
     main_msg db 'Sudoku Assembly$'
-
+    controle_msg db 'Controles:$'
+    clique_msg db 'Para por valores$'
+    clique2_msg db 'na tabela, clique$'
+    clique3_msg db 'no espaco e digite$'
+    clique4_msg db 'um valor entre 1 a 9$'
 .code
     imp_espaco macro    ;Macro impressão de espaço
-
+        PUSH AX
+        PUSH DX
         MOV AH,2
         MOV DL,20h
         int 21h
+        POP DX
+        POP AX
+
+    ENDM
+
+    Imprime_msg macro var1   ;macro para codigo de impressão 
+         
+        PUSH AX
+        PUSH DX
+        MOV AH, 09h
+        LEA DX,var1
+        INT 21h
+        POP DX
+        POP AX
+
+    ENDM
+
+
+    imp_back macro    ;Macro impressão de backspace
+
+        PUSH AX
+        PUSH DX
+        MOV AH,2
+        MOV DL,8h
+        int 21h
+        POP DX
+        POP AX
 
     ENDM
 
@@ -41,157 +73,135 @@
     ENDM
 
 
-    main proc   
+
+
+.code
+    main proc
 
         MOV AX,@data       ;Movendo data para ax
         MOV DS,AX
         MOV ES,AX
 
-
-        MOV AH,00h
-        MOV AL,3
+        MOV Ah,0
+        MOV al,6            ;Ativando modo se vídeo CGA 640x200
         int 10h
-   
 
 
-        MOV AH, 06h        ;Cor de fundo(cinza)
-        XOR AL, AL     
-        XOR CX,CX     
-        MOV DX, 184FH  
-        MOV BH, 70h
-        int 10H
+        MOV AH,0BH
+        MOV BH,0            ;Cor de fundo branco (bl = 7)
+        MOV BL,7
+        int 10h
 
-        MOV AH, 06h       ;Borda esquerda
-        XOR CX, CX        
-        MOV DL, 6
-        MOV DH,24
-        MOV BH,07
-        int 10H
+        MOV AH,0BH
+        MOV BH,1            ;Seleção de paleta
+        MOV BL,0
+        int 10h
 
-        MOV AH, 06h      ;Borda cima
-        XOR CX, CX     
-        MOV DL,80
-        MOV DH,2
-        MOV BH,07
-        int 10H
-
-        
-        MOV AH, 06h      ;Borda direita
-        MOV CH,3
-        MOV CL,74
-        MOV DH,21
-        MOV DL,80
-        MOV BH,07
-        int 10H
-
-        MOV AH, 06h      ;Borda baixo   
-        MOV CH,22
-        MOV CL,7
-        MOV DH,24
-        MOV DL,80
-        MOV BH,07
-        int 10H
-
-
-        
-        MOV BH,0          
-        MOV AH,2
-
-        MOV DH,1                 ;Posicionando curso no meio superior (linha 1,coluna 32)
+        MOV AH,02
+        MOV DH,1               ;Posicionando cursor no meio superior (linha 1,coluna 32)
         MOV DL,32
+        MOV BH,0
         int 10h
 
-        LEA DX,main_msg          ;Imprimindo "sudoku assembly"
-        MOV AH,09
-        int 21h
+        Imprime_msg main_msg       ;Imprimindo "sudoku assembly"
 
-        
-        MOV DH,4
+        MOV DH,7              ;Posicionando curso na esquerda (linha 7,coluna 1)
+        MOV DL,1
+        MOV BH,0
+        int 10h
+
+        Imprime_msg controle_msg
+
+        ADD DH,2                    ;Para cada mensagem, mover o cursor para a próxima linha
+        int 10h
+
+        Imprime_msg clique_msg
+
+        inc DH
+        int 10h
+
+        Imprime_msg clique2_msg
+
+        inc DH
+        int 10h
+
+        Imprime_msg clique3_msg
+
+        inc DH
+        int 10h
+
+        Imprime_msg clique4_msg
+
+
+
+
+        MOV DH,5               ;Posição da matriz (primeira linha)
         MOV DL,26
-        
-
         lea SI,matriz
         call imprimematriz     ;Procedimento de imprimir matriz
 
 
+       call grade               ;Procedimento de imprimir grade do sudoku
 
-        MOV BH,0
-        MOV AH,02
-        MOV DL,8
-        int 21h
+        imp_back
+        mov ax, 01h            ;Ativando cursor(mouse)
+        int 33h
 
-            CONTROLE:                   ;Loop de controle
-                MOV AH,0
-                int 16h                 ;Função de ler input do teclado
-
-                CMP AH,1Ch
-                JE TECLAENTER           ;Se for enter pular para tecla enter
-
-                CMP AH,01h
-                JE TECLAESC             ;Se for esc pular para teclaesc
-
-                OR AL,AL
-                JNE CONTROLE            ;Se for algum caractere, ler novamente
-
-                PUSH AX
-                MOV AH,03h              ;Pegando posicao do cursor
-                int 10h
-                POP AX
+        XOR CX,CX
+        XOR DX,DX
 
 
-                ;Comando do cursor pelas setas 
-                CMP AH,48h              
-                JE CIMA
+        CONTROLE:              ;Loop para controles com o mouse           
+                mov  ax, 3h 
+                int  33h 
+                TEST bx,1
+        JZ CONTROLE                  ;Pular se não houver clique no mouse
+                                     ;Valor inicial da coluna 214(+24)->430,Valor inicial da linha 36(+16)->180
+                CMP CX,214      
+                JL CONTROLE
+                CMP CX,430
+                JG CONTROLE
+                CMP DX,36             
+                JL CONTROLE
+                CMP DX,180
+                JG CONTROLE          ;Verificando se o clique está dentro da coluna
 
-                CMP AH,50h              
-                JE BAIXO
-                    
-                CMP AH,4Bh             
-                JE ESQUERDA
+                XOR AX,AX
+                MOV AH,3
+                MOV AL,24            ;Convertendo a posição do mouse em posição de char
+                MOV BX,36
+            
+                LINHABOTAO:
+                    ADD AH,2         ;Convertendo a posição da linha para char
+                    ADD BX,16
+                    CMP DX,BX
+                    JNL LINHABOTAO
 
-                CMP AH,4Dh              
-                JE DIREITA
+                XOR BX,BX
+                MOV BX,214
 
-                JMP CONTROLE
+                    COLUNABOTAO:
+                        ADD AL,3
+                        ADD BX,24       ;Convertendo a posição da coluna para char
+                        CMP CX,BX      
+                    JNL COLUNABOTAO
 
-                TECLAESC:          
-                    JMP FIM                 ;leva para o fim do programa
+                    ADD AL,1
+                    XOR BX,BX 
+                    MOV DH,AH
+                    MOV DL,AL
 
-                TECLAENTER:
-                    CALL coloca_valor       ;Função de mudar número acima do cursor
-                    JMP CONTROLE
-
-                CIMA:                       
-                    CMP DH,4                ;Vê se o cursor ja esta no limite superior
-                    JE CONTROLE
-                    SUB DH,2                ;Se não estiver, mover para cima
-                    JMP EXECUCAO
-
-                BAIXO:
-                    CMP DH,20              ;Vê se o cursor ja esta no limite inferior
-                    JE CONTROLE
-                    ADD DH,2               ;Se não estiver, mover para baixo
-                    JMP EXECUCAO 
-
-                ESQUERDA:
-                    CMP DL,1Ch             ;Vê se o cursor ja esta no limite esquerdo
-                    JE CONTROLE
-                    SUB DL,3               ;Se não estiver, mover para esquerda
-                    JMP EXECUCAO
-
-                DIREITA:
-                    CMP DL,34h             ;Vê se o cursor ja esta no limite direito
-                    JE CONTROLE            
-                    ADD DL,3               ;Se não estiver, mover para direita
-
-                EXECUCAO:
-                    MOV AH,02h            ;Funcao de mover o cursor de acordo com DH,DL (DH = linha, DL = coluna)
+                    MOV AH,02           ;Movendo o cursor para posição convertida( o cursor se move por char)  
                     int 10h
-                    JMP CONTROLE
+                CALL coloca_valor       ;função de colocar valor na tabela 
+            JMP CONTROLE
+
+
+
                 
                 
 
-        FIM:
+        FIM:            ;fim do programa
 
         mov ax, 3        ;clear screen
         int 10h
@@ -204,12 +214,60 @@
         
         MOV AH,4CH
         int 21h
-        
     
+
+
+    MOV AH,4ch
+    int 21h
 
     main endp
 
-    ;=== Procedimento de imprimir matriz 9x9 ===
+
+    ;=== Procedimento de imprimir grade do sudoku ===
+    
+    grade proc
+        reg_push
+
+
+        MOV Ah,0CH             ;Definindo começo da grade 
+        MOV BH,0
+        MOV AL,1
+        MOV DX,36
+        MOV CX,214
+
+        PROXPIXELINHAS:         ;Imprimindo as linhas das grade
+            PIXELLINHAS:
+                int 10h
+                inc CX
+                CMP CX,430      ;Imprime o pixel até a coluna 430
+            JLE PIXELLINHAS         
+
+
+            ADD DX,16           ;Vai para o próxima linha até (DX = 180)
+            MOV CX,214
+            CMP DX,180
+        JLE PROXPIXELINHAS
+
+        MOV DX,36             
+        MOV CX,214
+
+        PROXPIXELCOL:            ;Imprimindo as colunas da grade 
+            PIXELCOL:
+                int 10h
+                inc DX
+                CMP DX,180
+            JLE PIXELCOL
+            ADD CX,24
+            MOV DX,36              ;Próxima coluna (até CX = 430)
+            CMP CX,430
+        JLE PROXPIXELCOL
+
+            reg_pop
+            ret
+
+    grade endp
+
+     ;=== Procedimento de imprimir matriz 9x9 ===
     ;Imprime uma matriz 9x9 dando 2 espacos para cada coluna e 1 espaco para cada linha 
     ;Entrada:
     ;SI: Endereço da matriz 
@@ -255,6 +313,7 @@
     imprimematriz endp
 
 
+    
     ;=== Procedimento de colocar numero na matriz ===
     ;Coloca um valor de 1 a 9 na matriz de acordo com a posição em que o cursor está
     ;Entrada:
@@ -271,7 +330,7 @@
         XOR AX,AX
 
         MOV AL,DH          ;Tranformando a linha  em coordenada da matriz
-        SUB AL,4
+        SUB AL,5
         MOV CL,2
         DIV CL
         MOV CL,9
@@ -324,15 +383,8 @@
     coloca_valor endp
         
 
-
-
-
     END MAIN
 
 
 
 
-
-            
-            
-            
