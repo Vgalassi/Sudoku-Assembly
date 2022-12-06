@@ -1,15 +1,15 @@
 .model small
 .stack 14h
 .data
-    matriz  db '5','3',2 dup(' '),'7',4 dup(' ')
-            db '6',2 dup(' '),'1','9','5',3 dup(' ')
-            db ' ','9','8',3 dup(' '),' ','6',' '
-            db '8',3 dup(' '),'6',3 dup(' '),'3'
-            db '4',2 dup(' '),'8',' ','3',2 dup(' '),'1'
-            db '7',3 dup(' '),'2',3 dup(' '),'6'
-            db ' ','6',4 dup(' '),'2','8',' '
-            db 3 dup(' '),'4','1','9',2 dup(' '),'5'
-            db 4 dup(' '),'8',2 dup(' '),'7','9'
+    matriz  db '5','3','4','6','7','8','9','1','2'
+            db '6','7','2','1','9','5','3','4','8'
+            db '1','9','8','3','4','2','5','6','7'
+            db '8','5','9','7','6','1','4','2','3'
+            db '4','2','6','8','5','3','7','9','1'
+            db '7','1','3','9','2','4','8','5','6'
+            db '9','6','1','5','3','7','2','8','4'
+            db '2','8','7','4','1','9','6','3','5'
+            db '3','4','5','2','8','6','1','7',' '
 
     vetor_aux db '1','2','3','4','5','6','7','8','9'
 
@@ -87,13 +87,13 @@
         MOV ES,AX
 
         MOV Ah,0
-        MOV al,6            ;Ativando modo se vídeo CGA 640x200
+        MOV al,0Eh            ;Ativando modo se vídeo CGA 640x200
         int 10h
 
 
         MOV AH,0BH
         MOV BH,0            ;Cor de fundo branco (bl = 7)
-        MOV BL,7
+        MOV BL,0
         int 10h
 
         MOV AH,0BH
@@ -148,7 +148,7 @@
        call grade               ;Procedimento de imprimir grade do sudoku
 
         imp_back
-        mov ax, 01h            ;Ativando cursor(mouse)
+        mov ax, 02h            ;Ativando cursor(mouse)
         int 33h
 
         XOR CX,CX
@@ -234,7 +234,7 @@
 
         MOV Ah,0CH             ;Definindo começo da grade 
         MOV BH,0
-        MOV AL,1
+        MOV AL,9
         MOV DX,36
         MOV CX,214
 
@@ -402,16 +402,15 @@
             INC BX
         LOOP TESTECOMPLETA
 
-        XOR DX,DX
         XOR BX,BX
         MOV SI,-1
-        MOV CX,81
+        MOV CX,9
 
         TESTELINHA:
-            POP CX
+            PUSH CX
             MOV CX,9
             LINHAMATRIZ:
-                MOV AL,MATRIZ[BX]
+                MOV AL,matriz[BX]
                 COMPARAVETOR:
                     CMP SI,9
                     JE INVALIDO
@@ -420,19 +419,50 @@
                     JNE COMPARAVETOR
                     MOV vetor_aux[SI],0   
                     inc BX
-                    XOR SI,SI
+                    MOV SI,-1
             LOOP LINHAMATRIZ 
             CALL restaura_vetoraux
-            PUSH CX
+            POP CX
 
         LOOP TESTELINHA
+        
+        XOR AX,AX
+        XOR DX,DX
+        XOR SI,SI
+        XOR CX,CX
+        XOR BX,BX
+        XOR DI,DI
+        MOV SI,-1
+        MOV CX,9
 
+        TESTECOLUNA:
+            PUSH CX
+            MOV CX,9
+            COLUNAMATRIZ:
+                MOV AL,matriz[BX][DI]
+                COMPARAVETORC:
+                    CMP SI,9
+                    JE INVALIDO
+                    inc SI
+                    CMP vetor_aux[SI],AL
+                    JNE COMPARAVETORC
+                    MOV vetor_aux[SI],0   
+                    ADD BX,9
+                    MOV SI,-1
+            LOOP COLUNAMATRIZ 
+            inc DI
+            XOR BX,BX
+            CALL restaura_vetoraux
+            POP CX
+
+        LOOP TESTECOLUNA
 
         reg_pop
         MOV flag,1
         ret
 
         INVALIDO:
+            CALL restaura_vetoraux
             reg_pop
             MOV flag,0
             ret
@@ -444,12 +474,12 @@
         reg_push
 
         XOR BX,BX
-        MOV AL,1
+        MOV AL,31h
         restauracao:
             MOV vetor_aux[BX],AL
             inc AL
             inc BX
-        cmp AL,10
+        cmp BX,9
         jne restauracao
 
         reg_pop
