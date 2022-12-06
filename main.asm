@@ -11,12 +11,16 @@
             db 3 dup(' '),'4','1','9',2 dup(' '),'5'
             db 4 dup(' '),'8',2 dup(' '),'7','9'
 
+    vetor_aux db '1','2','3','4','5','6','7','8','9'
+
     main_msg db 'Sudoku Assembly$'
     controle_msg db 'Controles:$'
     clique_msg db 'Para por valores$'
     clique2_msg db 'na tabela, clique$'
     clique3_msg db 'no espaco e digite$'
     clique4_msg db 'um valor entre 1 a 9$'
+
+    flag db '?'
 .code
     imp_espaco macro    ;Macro impressão de espaço
         PUSH AX
@@ -194,12 +198,11 @@
                     MOV AH,02           ;Movendo o cursor para posição convertida( o cursor se move por char)  
                     int 10h
                 CALL coloca_valor       ;função de colocar valor na tabela 
+                CALL confere_vitoria
+                CMP flag,1
+                JE FIM
             JMP CONTROLE
-
-
-
-                
-                
+ 
 
         FIM:            ;fim do programa
 
@@ -347,9 +350,12 @@
         MOV SI,AX
 
 
-        imp_espaco          ;Imprimindo espaço para apagar o numero
+        MOV AH,02
+        MOV Dl,2Dh
+        int 21h
     
-        MOV AH,02h
+        
+        
         MOV Dl,8h
         int 21h             ;Backspace para voltar
     NOTNUM:
@@ -381,6 +387,75 @@
         ret 
 
     coloca_valor endp
+
+
+    confere_vitoria proc
+        reg_push
+        
+        XOR BX,BX
+        XOR AX,AX
+        MOV CX,81
+        TESTECOMPLETA:
+            MOV AL,matriz[BX]
+            CMP AL,20h
+            JE INVALIDO
+            INC BX
+        LOOP TESTECOMPLETA
+
+        XOR DX,DX
+        XOR BX,BX
+        MOV SI,-1
+        MOV CX,81
+
+        TESTELINHA:
+            POP CX
+            MOV CX,9
+            LINHAMATRIZ:
+                MOV AL,MATRIZ[BX]
+                COMPARAVETOR:
+                    CMP SI,9
+                    JE INVALIDO
+                    inc SI
+                    CMP vetor_aux[SI],AL
+                    JNE COMPARAVETOR
+                    MOV vetor_aux[SI],0   
+                    inc BX
+                    XOR SI,SI
+            LOOP LINHAMATRIZ 
+            CALL restaura_vetoraux
+            PUSH CX
+
+        LOOP TESTELINHA
+
+
+        reg_pop
+        MOV flag,1
+        ret
+
+        INVALIDO:
+            reg_pop
+            MOV flag,0
+            ret
+
+    confere_vitoria endp
+
+
+    restaura_vetoraux proc
+        reg_push
+
+        XOR BX,BX
+        MOV AL,1
+        restauracao:
+            MOV vetor_aux[BX],AL
+            inc AL
+            inc BX
+        cmp AL,10
+        jne restauracao
+
+        reg_pop
+        ret
+
+    restaura_vetoraux endp
         
 
     END MAIN
