@@ -244,8 +244,6 @@
                 inc CX
                 CMP CX,430      ;Imprime o pixel até a coluna 430
             JLE PIXELLINHAS         
-
-
             ADD DX,16           ;Vai para o próxima linha até (DX = 180)
             MOV CX,214
             CMP DX,180
@@ -395,10 +393,13 @@
         XOR BX,BX
         XOR AX,AX
         MOV CX,81
+        JMP TESTECOMPLETA
+        SHORTCUT2:
+        JMP INVALIDOINCONPLETA
         TESTECOMPLETA:
             MOV AL,matriz[BX]
             CMP AL,20h
-            JE INVALIDO
+            JE SHORTCUT2
             INC BX
         LOOP TESTECOMPLETA
 
@@ -413,7 +414,7 @@
                 MOV AL,matriz[BX]
                 COMPARAVETOR:
                     CMP SI,9
-                    JE INVALIDO
+                    JE SHORTCUT
                     inc SI
                     CMP vetor_aux[SI],AL
                     JNE COMPARAVETOR
@@ -427,9 +428,6 @@
         LOOP TESTELINHA
         
         XOR AX,AX
-        XOR DX,DX
-        XOR SI,SI
-        XOR CX,CX
         XOR BX,BX
         XOR DI,DI
         MOV SI,-1
@@ -442,7 +440,7 @@
                 MOV AL,matriz[BX][DI]
                 COMPARAVETORC:
                     CMP SI,9
-                    JE INVALIDO
+                    JE SHORTCUT
                     inc SI
                     CMP vetor_aux[SI],AL
                     JNE COMPARAVETORC
@@ -457,11 +455,62 @@
 
         LOOP TESTECOLUNA
 
+        
+                XOR DX,DX
+        XOR AX,AX
+        XOR BX,BX
+        MOV DI,0
+        MOV SI,-1
+        MOV CX,9
+        TESTE3x3:
+            PUSH CX
+            MOV CX,9
+            PROXMATRIZ3X3:
+                MOV AL,matriz[BX][DI]
+                COMPARAMATRIZM:
+                SHORTCUT:
+                    CMP SI,9
+                    JE INVALIDO
+                    inc SI
+                    CMP vetor_aux[SI],AL
+                    JNE COMPARAMATRIZM
+                    MOV vetor_aux[SI],0   
+                    inc DI
+                    inc AH
+                    MOV SI,-1
+                    CMP AH,3
+                    JNE CONTINUA_LINHA
+                        XOR DI,DI
+                        ADD BX,9
+                        XOR AX,AX
+                        MOV AL,DL
+                        ADD DI,AX
+                        XOR AX,AX
+                    CONTINUA_LINHA:
+            LOOP PROXMATRIZ3X3
+            inc DH
+            CMP DH,3
+            JNE PROXIMACOLUNA3
+                XOR AX,AX
+                ADD DL,3
+                MOV AL,DL
+                MOV DI,AX
+                XOR AX,AX
+                XOR BX,BX
+                XOR DH,DH
+            PROXIMACOLUNA3:
+            CALL restaura_vetoraux
+            POP CX
+
+        LOOP TESTE3x3
+
+
         reg_pop
         MOV flag,1
         ret
-
         INVALIDO:
+            POP CX
+        INVALIDOINCONPLETA:
             CALL restaura_vetoraux
             reg_pop
             MOV flag,0
