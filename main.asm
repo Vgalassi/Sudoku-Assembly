@@ -161,7 +161,7 @@ inicio:
             LEA SI,matriz_pr2       ;atribuindo a matriz pred 2 para a matriz principal
             JMP ATRIBUIR
         final:
-            JMP FIM
+            JMP PROG_FIM
         
 
     ATRIBUIR:
@@ -305,14 +305,20 @@ inicio:
         int 21h
     
 
-
+    PROG_FIM:
     MOV AH,4ch
     int 21h
 
     main endp
 
 
+
+
+
+
+
     ;=== Procedimento de imprimir grade do sudoku ===
+    ;Imprime a grade do sudoku,alternando entre cores a cada 3 impressões 
     
     grade proc
         reg_push
