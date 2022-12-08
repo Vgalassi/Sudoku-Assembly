@@ -1,7 +1,7 @@
 .model small
 .stack 14h
 .data
-    matriz  db '5','3',2 dup(' '),'7',4 dup(' ')
+    matriz_pr1 db '5','3',2 dup(' '),'7',4 dup(' ')
             db '6',2 dup(' '),'1','9','5',3 dup(' ')
             db ' ','9','8',4 dup(' '),'6',' '
             db '8',3 dup(' '),'6',3 dup(' '),'3'
@@ -11,10 +11,32 @@
             db 3 dup(' '),'4','1','9',2 dup(' '),'5'
             db 4 dup(' '),'8',2 dup(' '),'7','9'
 
-    vetor_val dw 60 dup (' ')
+    matriz_pr2 db ' ','6',' ','1',' ','4',' ','5',' '
+            db 2 dup(' '),'8','3',' ','5','6',2 dup(' ')
+            db '2',7 dup(' '),'1'
+            db '8',2 dup(' '),'4',' ','7',2 dup(' '),'6'
+            db 2 dup(' '),'6',3 dup(' '),'3',2 dup (' ')
+            db '7',2 dup(' '),'9',' ','1',2 dup(' '),'4'
+            db '5',7 dup (' '),'2'
+            db 2 dup(' '),'7','2',' ','6','9',2 dup(' ')
+            db ' ','4',' ','5',' ','8',' ','7',' '
 
 
-    vetor_aux db '1','2','3','4','5','6','7','8','9'
+    matriz  db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+
+
+    vetor_val dw 60 dup (' ')       ;Vetor para guardar posição dos valores imutáveis
+
+
+    vetor_aux db '1','2','3','4','5','6','7','8','9'   ;Vetor para validação de vitória
 
     main_msg db 'Sudoku Assembly$'
     controle_msg db 'Controles:$'
@@ -95,7 +117,7 @@
 
 
         MOV AH,0BH
-        MOV BH,0            ;Cor de fundo branco (bl = 7)
+        MOV BH,0            ;Cor de fundo preto (bl = 0)
         MOV BL,0
         int 10h
 
@@ -103,6 +125,9 @@
         MOV BH,1            ;Seleção de paleta
         MOV BL,0
         int 10h
+
+        LEA SI,matriz_pr2
+        CALL atribui_matriz
 
         MOV AH,02
         MOV DH,1               ;Posicionando cursor no meio superior (linha 1,coluna 32)
@@ -140,7 +165,7 @@
         Imprime_msg clique4_msg
 
 
-        CALL valores_imutaveis
+        CALL valores_imutaveis   ;Chamar procedimento para guardar valores imutaveís no veto val
 
     
 
@@ -170,13 +195,13 @@
                                      ;Valor inicial da coluna 214(+24)->430,Valor inicial da linha 36(+16)->180
                 CMP CX,214      
                 JL CONTROLE
-                CMP CX,430
+                CMP CX,430           ;Verificando se o clique do mouse está dentro da grade
                 JG CONTROLE
                 CMP DX,36             
                 JL CONTROLE
                 CMP DX,180
-                JG CONTROLE          ;Verificando se o clique está dentro da coluna
-
+                JG CONTROLE
+                                    ;Verificando se o clique está dentro da coluna
                 XOR AX,AX
                 MOV AH,3
                 MOV AL,24            ;Convertendo a posição do mouse em posição de char
@@ -205,9 +230,9 @@
                     MOV AH,02           ;Movendo o cursor para posição convertida( o cursor se move por char)  
                     int 10h
                 CALL coloca_valor       ;função de colocar valor na tabela 
-                CALL confere_vitoria
+                CALL confere_vitoria    ;Função de checar se o sudoku está certo
                 CMP flag,1
-                JE FIM
+                JE FIM                  ;Se o sudoku estiver certo, pular para o fim
             JMP CONTROLE
  
 
@@ -257,15 +282,14 @@
             MOV CX,214
             CMP BL,3
             JNE TROCACOR
-                MOV AL,1
+                MOV AL,1        ;Muda de cor para a terceira,sexta e nona linha
                 XOR BX,BX
-            
             TROCACOR:
             CMP DX,180
-        JLE PROXPIXELINHAS
+        JLE PROXPIXELINHAS      
 
         MOV DX,36             
-        MOV CX,214
+        MOV CX,214 
         XOR BX,BX
         MOV AL,1
 
@@ -273,7 +297,7 @@
         PROXPIXELCOL:            ;Imprimindo as colunas da grade 
             PIXELCOL:
                 int 10h
-                inc DX
+                inc DX           ;A imprime a linha até o pixel 180
                 CMP DX,180
             JLE PIXELCOL
             MOV AL,9
@@ -282,7 +306,7 @@
             MOV DX,36              ;Próxima coluna (até CX = 430)
             CMP BL,3
             JNE TROCACORCOL
-                MOV AL,1
+                MOV AL,1         ;Muda de cor para a terceira,sexta e nona coluna
                 XOR BX,BX
             TROCACORCOL:
             CMP CX,430
@@ -300,12 +324,16 @@
     ;DL: Coluna do cursor
     ;DH: linha do cursor
     ;BH: página
+    ;Na função:
+    ;BL define a cor do texto
+    ;DL = números de colunas impressas antes de pular para a próxima linha
+    ;Dh = Linha atual
 
     imprimematriz proc
 
         reg_push                ;Push registradores
         CLD
-        MOV BL,6h
+        MOV BL,14
 
 
         MOV CX,9                ;Contador de linha 
@@ -341,9 +369,11 @@
 
     
     ;=== Procedimento de colocar numero na matriz ===
-    ;Coloca um valor de 1 a 9 na matriz de acordo com a posição em que o cursor está
+    ;Coloca um valor de 1 a 9 (leitura) na matriz de acordo com a posição em que o cursor está
     ;Entrada:
     ;BH = página
+    ;Cursor posicionado no valor que será substituído
+    ;vetor_aux com 60 espaços
 
 
     coloca_valor proc
@@ -355,7 +385,7 @@
 
         XOR AX,AX
 
-        MOV AL,DH          ;Tranformando a linha  em coordenada da matriz
+        MOV AL,DH          ;Tranformando a linha  do cursor em coordenada da matriz
         SUB AL,5
         MOV CL,2
         DIV CL
@@ -365,7 +395,7 @@
         MOV BX,AX
         XOR AX,AX
 
-        MOV AL,DH          ;Tranformando a linha  coluna na coordenada da matriz
+        MOV AL,DH          ;Tranformando a coluna do cursor em coordenada da matriz
         MOV AL,Dl           
         SUB AL,1Ch
         MOV CL,3
@@ -373,9 +403,9 @@
         MOV SI,AX
 
         XOR DI,DI
-        VALIDACAOPOSICAO:
+        VALIDACAOPOSICAO:            ;Verificando se o valor não é um valor imutável
             CMP BX,vetor_val[DI]
-            JNE POSDIFERENTE
+            JNE POSDIFERENTE         ; verifica se o endereço do valor não esta em vetor aux
             ADD DI,2
             CMP SI,vetor_val[DI]
             JNE POSDIFERENTE2
@@ -389,13 +419,12 @@
 
 
         MOV AH,02
-        MOV Dl,2Dh
+        MOV Dl,2Dh         ;imprimindo "-"
         int 21h
     
         
         
-        MOV Dl,8h
-        int 21h             ;Backspace para voltar
+        imp_back
     NOTNUM:
         MOV AH,07           ;Lendo o input (sem echo)
         int 21h
@@ -429,16 +458,23 @@ FIMCOLOCAVALOR:
 
 
     confere_vitoria proc
+    ;=== Procedimento de conferir se o usuário completou o sudoku ==
+    ;Realiza teste se a matriz está completa, se todas as linhas tem números diferentes
+    ;se todas as colunas tem números diferentes e se as matrizes 3x3 tem números diferentes 
+    ;Entrada: 
+    ;vetor_aux com valor: '1','2','3','4','5','6','7','8','9'
+    ;Saída:
+    ;variável flag 0 ou 1 (0 = não ganhou 1 = usuário ganhou)
         reg_push
         
         XOR BX,BX
         XOR AX,AX
         MOV CX,81
-        JMP TESTECOMPLETA
+        JMP TESTECOMPLETA          ;Testa se a matriz tem um espaço (' ')
         SHORTCUT2:
-        JMP INVALIDOINCONPLETA
+        JMP INVALIDOINCONPLETA     ;Se matriz tiver um espaço retornar flag = 0 (não ganhou o jogo)
         TESTECOMPLETA:
-            MOV AL,matriz[BX]
+            MOV AL,matriz[BX]  
             CMP AL,20h
             JE SHORTCUT2
             INC BX
@@ -448,22 +484,22 @@ FIMCOLOCAVALOR:
         MOV SI,-1
         MOV CX,9
 
-        TESTELINHA:
-            PUSH CX
+        TESTELINHA:                         ;Teste de linha com o vetor aux
+            PUSH CX             
             MOV CX,9
             LINHAMATRIZ:
-                MOV AL,matriz[BX]
-                COMPARAVETOR:
-                    CMP SI,9
+                MOV AL,matriz[BX]           
+                COMPARAVETOR:               ;Testar para cada linha da matriz   
+                    CMP SI,9 
                     JE SHORTCUT
                     inc SI
-                    CMP vetor_aux[SI],AL
-                    JNE COMPARAVETOR
+                    CMP vetor_aux[SI],AL   ;Se o número for igual ao do vetor aux, transforma aquele número de vetor auxiliar em 0
+                    JNE COMPARAVETOR       ;Se nenhum número for igual ao do vetor aux, usuário não ganhou o jogo
                     MOV vetor_aux[SI],0   
                     inc BX
                     MOV SI,-1
             LOOP LINHAMATRIZ 
-            CALL restaura_vetoraux
+            CALL restaura_vetoraux        ;Restaura o valor padrão do vetor
             POP CX
 
         LOOP TESTELINHA
@@ -474,36 +510,36 @@ FIMCOLOCAVALOR:
         MOV SI,-1
         MOV CX,9
 
-        TESTECOLUNA:
+        TESTECOLUNA:                        ;Teste de coluna com o vetor aux
             PUSH CX
             MOV CX,9
             COLUNAMATRIZ:
-                MOV AL,matriz[BX][DI]
+                MOV AL,matriz[BX][DI]       ;Testar para cada linha da matriz   
                 COMPARAVETORC:
                     CMP SI,9
                     JE SHORTCUT
                     inc SI
-                    CMP vetor_aux[SI],AL
-                    JNE COMPARAVETORC
+                    CMP vetor_aux[SI],AL        ;Se o número for igual ao do vetor aux, transforma aquele número de vetor auxiliar em 0                                 
+                    JNE COMPARAVETORC           ;Se nenhum número for igual ao do vetor aux, usuário não ganhou o jogo
                     MOV vetor_aux[SI],0   
                     ADD BX,9
                     MOV SI,-1
             LOOP COLUNAMATRIZ 
             inc DI
             XOR BX,BX
-            CALL restaura_vetoraux
+            CALL restaura_vetoraux              ;Restaura o valor do vetor aux
             POP CX
 
         LOOP TESTECOLUNA
 
         
-                XOR DX,DX
+        XOR DX,DX
         XOR AX,AX
         XOR BX,BX
         MOV DI,0
         MOV SI,-1
         MOV CX,9
-        TESTE3x3:
+        TESTE3x3:                     ;Teste de matriz 3x3 com vetor aux
             PUSH CX
             MOV CX,9
             PROXMATRIZ3X3:
@@ -513,14 +549,14 @@ FIMCOLOCAVALOR:
                     CMP SI,9
                     JE INVALIDO
                     inc SI
-                    CMP vetor_aux[SI],AL
-                    JNE COMPARAMATRIZM
+                    CMP vetor_aux[SI],AL        ;Se o número for igual ao do vetor aux, transforma aquele número de vetor auxiliar em 0
+                    JNE COMPARAMATRIZM          ;Se nenhum número for igual ao do vetor aux, usuário não ganhou o jogo
                     MOV vetor_aux[SI],0   
                     inc DI
-                    inc AH
+                    inc AH                     ;Ah = contador de linhas da matriz 3x3
                     MOV SI,-1
-                    CMP AH,3
-                    JNE CONTINUA_LINHA
+                    CMP AH,3 
+                    JNE CONTINUA_LINHA         ;Ir para para próxima matrix 3x3 da coluna
                         XOR DI,DI
                         ADD BX,9
                         XOR AX,AX
@@ -529,9 +565,9 @@ FIMCOLOCAVALOR:
                         XOR AX,AX
                     CONTINUA_LINHA:
             LOOP PROXMATRIZ3X3
-            inc DH
+            inc DH                       ;Contador de matrizes 3x3 da coluna
             CMP DH,3
-            JNE PROXIMACOLUNA3
+            JNE PROXIMACOLUNA3            ;Posicionameto de matriz 3x3,ir para a próxma coluna de matriz 3x3
                 XOR AX,AX
                 ADD DL,3
                 MOV AL,DL
@@ -540,19 +576,19 @@ FIMCOLOCAVALOR:
                 XOR BX,BX
                 XOR DH,DH
             PROXIMACOLUNA3:
-            CALL restaura_vetoraux
+            CALL restaura_vetoraux        ;Restaura valor do vetor aux 
             POP CX
 
         LOOP TESTE3x3
 
 
         reg_pop
-        MOV flag,1
+        MOV flag,1                         ;Flag = 1 (se o usuário ganhou)
         ret
         INVALIDO:
             POP CX
         INVALIDOINCONPLETA:
-            CALL restaura_vetoraux
+            CALL restaura_vetoraux        ;Flag = 0 (se o sudoku está errado/incompleto)
             reg_pop
             MOV flag,0
             ret
@@ -560,14 +596,18 @@ FIMCOLOCAVALOR:
     confere_vitoria endp
 
 
-    restaura_vetoraux proc
+    ;=== Procedimento de restaurar valor da vetor aux ===
+    ;Restaura o valor original do vetor aux (1,2,3...9)
+    ;Entrada:
+    ;Vetor_aux
+    restaura_vetoraux proc              
         reg_push
 
-        XOR BX,BX
+        XOR BX,BX                    
         MOV AL,31h
-        restauracao:
+        restauracao:              ;Atribui o numero para o vetor
             MOV vetor_aux[BX],AL
-            inc AL
+            inc AL                 ;Al = número atribuido
             inc BX
         cmp BX,9
         jne restauracao
@@ -577,37 +617,63 @@ FIMCOLOCAVALOR:
 
     restaura_vetoraux endp
 
+    ;=== Procedimento de valores imutaveis ===
+    ;Define quais valores são imutaveis e armazena seu endereço no vetor_val
+    ;Entrada:
+    ;vetor_val (60 espacos)
+    ;matriz 9x9
     valores_imutaveis proc
         reg_push
 
         MOV CX,9
         XOR BX,BX
-        MOV DI,-1
+        MOV DI,-1 
         XOR SI,SI
         
         
-        PEGAVALORES:
+        PEGAVALORES:                            
 
             PROXLINHAVAL:
                 inc DI
                 CMP DI,9
                 JE LINHACOMPLETA
-                CMP MATRIZ[BX][DI],' '
+                CMP MATRIZ[BX][DI],' '         ;Verifique se tem espaço no elemento(valor mutavel)
             JE PROXLINHAVAL
-                MOV vetor_val[SI],BX
+                MOV vetor_val[SI],BX           ;COloca a linha do valor imutavel no vetor val
                 ADD SI,2          
-                MOV vetor_val[SI],DI           
+                MOV vetor_val[SI],DI           ;Coloca a coluna do valor imutavel no vetor val
                 ADD SI,2
             JMP PROXLINHAVAL
             LINHACOMPLETA:
-            MOV DI,-1
-            ADD BX,9
+            MOV DI,-1                          ;Reseta as colunas
+            ADD BX,9                           ;Muda para a próxima linha
         LOOP PEGAVALORES
 
 
         reg_pop
         ret 
     valores_imutaveis endp
+
+    ;=== Procedimento de atribuir valor para matriz principal
+    ;Atribui uma matriz 9x9 para a matriz principal
+    ;Entrada: 
+    ;Matriz 9x9 principal
+    ;SI = lea de Matriz 9x9
+    atribui_matriz proc
+    reg_push
+
+    CLD 
+    XOR BX,BX
+    MOV CX,81
+    loop_atribuicao:
+        LODSB
+        MOV matriz[BX],AL
+        inc BX
+    LOOP loop_atribuicao
+
+    reg_pop
+    ret
+    atribui_matriz endp
 
     END MAIN
 
