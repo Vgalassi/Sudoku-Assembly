@@ -10,6 +10,7 @@
             db ' ','6',4 dup(' '),'2','8',' '
             db 3 dup(' '),'4','1','9',2 dup(' '),'5'
             db 4 dup(' '),'8',2 dup(' '),'7','9'
+            
 
     matriz_pr2 db ' ','6',' ','1',' ','4',' ','5',' '
             db 2 dup(' '),'8','3',' ','5','6',2 dup(' ')
@@ -40,10 +41,13 @@
 
     main_msg db 'Sudoku Assembly$'
     controle_msg db 'Controles:$'
+    voltar_msg db 'Voltar$'
     clique_msg db 'Para por valores$'
     clique2_msg db 'na tabela, clique$'
     clique3_msg db 'no espaco e digite$'
     clique4_msg db 'um valor entre 1 a 9$'
+    Hexa db "HEXA<3$"
+    FraseVitoria db "PARABENS VOCE TROUXE O HEXA PARA O BRASIL$"    
 
     flag db '?'
 .code
@@ -111,6 +115,16 @@
         MOV DS,AX
         MOV ES,AX
 
+
+
+inicio:
+        XOR BX,BX
+        XOR AX,AX
+        XOR DX,DX
+        XOR SI,SI
+        XOR CX,CX
+
+
         MOV Ah,0
         MOV al,0Eh            ;Ativando modo se vídeo CGA 640x200
         int 10h
@@ -125,21 +139,51 @@
         MOV BH,1            ;Seleção de paleta
         MOV BL,0
         int 10h
+        
+        MOV AH,07
+        int 21h
 
-        LEA SI,matriz_pr2
-        CALL atribui_matriz
+        CMP AL,31h          ;Se o usuario digitar 1, usar predefinicao 1
+        JE pred1
 
+        CMP AL,32h          ;Se o usuario digitar 2,usar predefinicao 2
+        JE pred2
+
+        CMP AL,35h          ;Se o usuario digitar 5, sair do programa
+        JE FINAL 
+
+        JMP inicio
+
+        pred1:
+            LEA SI,matriz_pr1       ;atribuindo matriz pred 1 para a matriz principal
+            JMP ATRIBUIR
+        pred2:
+            LEA SI,matriz_pr2       ;atribuindo a matriz pred 2 para a matriz principal
+            JMP ATRIBUIR
+        final:
+            JMP PROG_FIM
+        
+
+    ATRIBUIR:
+
+        CALL atribui_matriz          ;Procedimento de atribuir matriz em SI para a matriz principal
+        
         MOV AH,02
-        MOV DH,1               ;Posicionando cursor no meio superior (linha 1,coluna 32)
-        MOV DL,32
+        MOV DH,1
+        MOV DL,5
         MOV BH,0
         int 10h
+        Imprime_msg voltar_msg
 
-        Imprime_msg main_msg       ;Imprimindo "sudoku assembly"
+              
+        MOV DL,32
+        MOV BH,0                    ;Posicionando cursor no meio superior (linha 1,coluna 32)
+        int 10h
+
+        Imprime_msg main_msg       ;Imprimindo1 "sudoku assembly"
 
         MOV DH,7              ;Posicionando curso na esquerda (linha 7,coluna 1)
         MOV DL,1
-        MOV BH,0
         int 10h
 
         Imprime_msg controle_msg
@@ -193,6 +237,15 @@
                 TEST bx,1
         JZ CONTROLE                  ;Pular se não houver clique no mouse
                                      ;Valor inicial da coluna 214(+24)->430,Valor inicial da linha 36(+16)->180
+
+                CMP CX,85
+                JG GRADETEST
+                CMP DX,15           ;Testando se o clique está no botão de voltar
+                JG GRADETEST
+                JMP inicio          ;Se estiver, voltar para o inicio
+
+
+            GRADETEST:
                 CMP CX,214      
                 JL CONTROLE
                 CMP CX,430           ;Verificando se o clique do mouse está dentro da grade
@@ -238,27 +291,34 @@
 
         FIM:            ;fim do programa
 
+
         mov ax, 3        ;clear screen
         int 10h
 
         XOR DX,DX
         PUSH DX
         
-        LEA SI,matriz
-        CALL imprimematriz
+        
+        CALL BANDEIRA         ;Procedimento de imprimir tela de vitoria 
         
         MOV AH,4CH
         int 21h
     
 
-
+    PROG_FIM:
     MOV AH,4ch
     int 21h
 
     main endp
 
 
+
+
+
+
+
     ;=== Procedimento de imprimir grade do sudoku ===
+    ;Imprime a grade do sudoku,alternando entre cores a cada 3 impressões 
     
     grade proc
         reg_push
@@ -653,6 +713,208 @@ FIMCOLOCAVALOR:
         reg_pop
         ret 
     valores_imutaveis endp
+    
+    BANDEIRA proc
+    reg_push
+
+    ;640x200
+        MOV ah,00h
+        MOV al,0eh
+        int 10h
+
+
+        MOV AH,02
+        MOV DH,6              ;Posicionando cursor no meio superior (linha 1,coluna 32)
+        MOV DL,17
+        MOV BH,0
+        int 10h
+
+        mov ah,09h
+        lea dx,FraseVitoria
+        int 21h
+
+    ;VERDE PROC
+
+    ; draw pixel -coluna -linha  -cor
+
+        mov ah,0CH
+        mov cx,160
+        mov dx,103
+        mov al,2
+
+
+
+    linhavertical1:
+        int 10h
+        inc dx
+        cmp dx,181
+        jne linhavertical1
+
+        
+    ; draw pixel -coluna -linha  -cor
+
+        mov ah,0CH
+        mov cx,160
+        mov dx,103
+        mov al,2
+    linhahorizontal1:
+        int 10h
+        inc cx
+        cmp cx,467
+        jne linhahorizontal1
+    ; draw pixel -coluna -linha  -cor
+
+        mov ah,0CH
+        mov cx,160
+        mov dx,180
+        mov al,2
+    linhahorizontal2:
+        int 10h
+        inc cx
+        cmp cx,467
+        jne linhahorizontal2
+
+    ; draw pixel -coluna -linha  -cor
+
+        mov ah,0CH
+        mov cx,467
+        mov dx,103
+        mov al,2
+    linhavertical2:
+        int 10h
+        inc dx
+        cmp dx,181
+        jne linhavertical2
+    ;VERDE ENDP
+
+
+    ;AMARELO PROC
+    ; draw pixel -coluna -linha  -cor
+
+        mov ah,0CH
+        mov cx,160
+        mov dx,141
+        mov al,14
+    linha:
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        
+        
+        
+        int 10h
+        inc dx
+        
+        cmp cx,312
+        jne linha
+    ; draw pixel -coluna -linha  -cor
+
+        mov ah,0CH
+        mov cx,312
+        mov dx,103
+        mov al,14
+    linha4:
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        
+        
+        
+        int 10h
+        inc dx
+        
+        cmp dx,142
+        jne linha4
+    ; draw pixel -coluna -linha  -cor
+
+        mov ah,0CH
+        mov cx,312
+        mov dx,179
+        mov al,14
+    linha2:
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        
+        int 10h
+        dec dx
+        
+        cmp dx,140
+        jne linha2
+
+    ; draw pixel -coluna -linha  -cor
+
+        mov ah,0CH
+        mov cx,160
+        mov dx,141
+        mov al,14
+    linha3:
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        int 10h
+        inc cx
+        
+        int 10h
+        dec dx
+        
+        cmp dx,103
+        jne linha3
+    ;AMARELO ENDPROC
+
+    ;AZUL PROC
+    ; draw pixel -coluna -linha  -cor
+
+        mov ah,0CH
+        mov cx,260
+        mov dx,123
+        mov al,1
+
+
+    pinta:
+    quadrado:
+        int 10h
+        inc dx
+        cmp dx,160
+        jne quadrado
+
+        mov dx,123
+        inc cx
+        cmp cx,365
+        jne pinta
+    ;AZUL ENDPROC
+
+    MOV AH,02
+    MOV DH,17              ;Posicionando cursor no meio superior (linha 1,coluna 32)
+    MOV DL,37
+    MOV BH,0
+    int 10h
+
+    mov ah,09h
+    lea dx,Hexa
+    int 21h
+
+    reg_pop
+    ret
+    BANDEIRA endp
 
     ;=== Procedimento de atribuir valor para matriz principal
     ;Atribui uma matriz 9x9 para a matriz principal
