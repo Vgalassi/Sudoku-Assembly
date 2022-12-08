@@ -3,7 +3,7 @@
 .data
     matriz  db '5','3',2 dup(' '),'7',4 dup(' ')
             db '6',2 dup(' '),'1','9','5',3 dup(' ')
-            db ' ','9','8',3 dup(' '),' ','6',' '
+            db ' ','9','8',4 dup(' '),'6',' '
             db '8',3 dup(' '),'6',3 dup(' '),'3'
             db '4',2 dup(' '),'8',' ','3',2 dup(' '),'1'
             db '7',3 dup(' '),'2',3 dup(' '),'6'
@@ -11,12 +11,19 @@
             db 3 dup(' '),'4','1','9',2 dup(' '),'5'
             db 4 dup(' '),'8',2 dup(' '),'7','9'
 
+    vetor_val dw 60 dup (' ')
+
+
+    vetor_aux db '1','2','3','4','5','6','7','8','9'
+
     main_msg db 'Sudoku Assembly$'
     controle_msg db 'Controles:$'
     clique_msg db 'Para por valores$'
     clique2_msg db 'na tabela, clique$'
     clique3_msg db 'no espaco e digite$'
     clique4_msg db 'um valor entre 1 a 9$'
+
+    flag db '?'
 .code
     imp_espaco macro    ;Macro impressão de espaço
         PUSH AX
@@ -83,13 +90,13 @@
         MOV ES,AX
 
         MOV Ah,0
-        MOV al,6            ;Ativando modo se vídeo CGA 640x200
+        MOV al,0Eh            ;Ativando modo se vídeo CGA 640x200
         int 10h
 
 
         MOV AH,0BH
         MOV BH,0            ;Cor de fundo branco (bl = 7)
-        MOV BL,7
+        MOV BL,0
         int 10h
 
         MOV AH,0BH
@@ -133,7 +140,9 @@
         Imprime_msg clique4_msg
 
 
+        CALL valores_imutaveis
 
+    
 
         MOV DH,5               ;Posição da matriz (primeira linha)
         MOV DL,26
@@ -141,10 +150,12 @@
         call imprimematriz     ;Procedimento de imprimir matriz
 
 
+
+
        call grade               ;Procedimento de imprimir grade do sudoku
 
         imp_back
-        mov ax, 01h            ;Ativando cursor(mouse)
+        mov ax, 02h            ;Ativando cursor(mouse)
         int 33h
 
         XOR CX,CX
@@ -194,12 +205,11 @@
                     MOV AH,02           ;Movendo o cursor para posição convertida( o cursor se move por char)  
                     int 10h
                 CALL coloca_valor       ;função de colocar valor na tabela 
+                CALL confere_vitoria
+                CMP flag,1
+                JE FIM
             JMP CONTROLE
-
-
-
-                
-                
+ 
 
         FIM:            ;fim do programa
 
@@ -230,7 +240,7 @@
 
 
         MOV Ah,0CH             ;Definindo começo da grade 
-        MOV BH,0
+        XOR BX,BX
         MOV AL,1
         MOV DX,36
         MOV CX,214
@@ -240,16 +250,25 @@
                 int 10h
                 inc CX
                 CMP CX,430      ;Imprime o pixel até a coluna 430
-            JLE PIXELLINHAS         
-
-
+            JLE PIXELLINHAS
+            MOV Al,9
+            inc BL         
             ADD DX,16           ;Vai para o próxima linha até (DX = 180)
             MOV CX,214
+            CMP BL,3
+            JNE TROCACOR
+                MOV AL,1
+                XOR BX,BX
+            
+            TROCACOR:
             CMP DX,180
         JLE PROXPIXELINHAS
 
         MOV DX,36             
         MOV CX,214
+        XOR BX,BX
+        MOV AL,1
+
 
         PROXPIXELCOL:            ;Imprimindo as colunas da grade 
             PIXELCOL:
@@ -257,8 +276,15 @@
                 inc DX
                 CMP DX,180
             JLE PIXELCOL
+            MOV AL,9
+            inc BL
             ADD CX,24
             MOV DX,36              ;Próxima coluna (até CX = 430)
+            CMP BL,3
+            JNE TROCACORCOL
+                MOV AL,1
+                XOR BX,BX
+            TROCACORCOL:
             CMP CX,430
         JLE PROXPIXELCOL
 
@@ -279,28 +305,28 @@
 
         reg_push                ;Push registradores
         CLD
+        MOV BL,6h
 
-        MOV AH,02               ;funcao de imprimir/posicionar cursor
+
         MOV CX,9                ;Contador de linha 
 
 
         IMPRIME_LOOP:
-
-                
+            MOV AH,02
             int 10h             ;Posiciona o cursor(Linha DH,Coluna 39)
             ADD DH,2
             PUSH DX
     
-            MOV BL,9            ;BL contador de coluna
+            MOV DL,9            ;BL contador de coluna
             PROXLINHA:
                 imp_espaco
                 imp_espaco
                 LODSB           ;Armazena dado da matriz em al       
-                MOV DL,AL       ;Move dado da matriz em DL e imprime
-                int 21h
+                mov ah,0Eh   
+                int 10h
                 
-                DEC BL
-                CMP BL,0
+                DEC DL
+                CMP DL,0
             JNE PROXLINHA       ;Acaba quando todas as colunas da linha forem impressas
             POP DX
         LOOP IMPRIME_LOOP       ;Acaba quando todas as linhas da matriz forem impressas
@@ -346,10 +372,28 @@
         DIV CL
         MOV SI,AX
 
+        XOR DI,DI
+        VALIDACAOPOSICAO:
+            CMP BX,vetor_val[DI]
+            JNE POSDIFERENTE
+            ADD DI,2
+            CMP SI,vetor_val[DI]
+            JNE POSDIFERENTE2
+            JMP FIMCOLOCAVALOR
+        POSDIFERENTE:
+        ADD DI,2
+        POSDIFERENTE2:
+        ADD DI,2
+        CMP DI,120
+        JNE VALIDACAOPOSICAO
 
-        imp_espaco          ;Imprimindo espaço para apagar o numero
+
+        MOV AH,02
+        MOV Dl,2Dh
+        int 21h
     
-        MOV AH,02h
+        
+        
         MOV Dl,8h
         int 21h             ;Backspace para voltar
     NOTNUM:
@@ -375,13 +419,195 @@
         MOV Dl,8h                ;Backspace
         int 21h
 
+FIMCOLOCAVALOR:
         reg_pop                 ;Recuperando valores iniciais
         
 
         ret 
 
     coloca_valor endp
+
+
+    confere_vitoria proc
+        reg_push
         
+        XOR BX,BX
+        XOR AX,AX
+        MOV CX,81
+        JMP TESTECOMPLETA
+        SHORTCUT2:
+        JMP INVALIDOINCONPLETA
+        TESTECOMPLETA:
+            MOV AL,matriz[BX]
+            CMP AL,20h
+            JE SHORTCUT2
+            INC BX
+        LOOP TESTECOMPLETA
+
+        XOR BX,BX
+        MOV SI,-1
+        MOV CX,9
+
+        TESTELINHA:
+            PUSH CX
+            MOV CX,9
+            LINHAMATRIZ:
+                MOV AL,matriz[BX]
+                COMPARAVETOR:
+                    CMP SI,9
+                    JE SHORTCUT
+                    inc SI
+                    CMP vetor_aux[SI],AL
+                    JNE COMPARAVETOR
+                    MOV vetor_aux[SI],0   
+                    inc BX
+                    MOV SI,-1
+            LOOP LINHAMATRIZ 
+            CALL restaura_vetoraux
+            POP CX
+
+        LOOP TESTELINHA
+        
+        XOR AX,AX
+        XOR BX,BX
+        XOR DI,DI
+        MOV SI,-1
+        MOV CX,9
+
+        TESTECOLUNA:
+            PUSH CX
+            MOV CX,9
+            COLUNAMATRIZ:
+                MOV AL,matriz[BX][DI]
+                COMPARAVETORC:
+                    CMP SI,9
+                    JE SHORTCUT
+                    inc SI
+                    CMP vetor_aux[SI],AL
+                    JNE COMPARAVETORC
+                    MOV vetor_aux[SI],0   
+                    ADD BX,9
+                    MOV SI,-1
+            LOOP COLUNAMATRIZ 
+            inc DI
+            XOR BX,BX
+            CALL restaura_vetoraux
+            POP CX
+
+        LOOP TESTECOLUNA
+
+        
+                XOR DX,DX
+        XOR AX,AX
+        XOR BX,BX
+        MOV DI,0
+        MOV SI,-1
+        MOV CX,9
+        TESTE3x3:
+            PUSH CX
+            MOV CX,9
+            PROXMATRIZ3X3:
+                MOV AL,matriz[BX][DI]
+                COMPARAMATRIZM:
+                SHORTCUT:
+                    CMP SI,9
+                    JE INVALIDO
+                    inc SI
+                    CMP vetor_aux[SI],AL
+                    JNE COMPARAMATRIZM
+                    MOV vetor_aux[SI],0   
+                    inc DI
+                    inc AH
+                    MOV SI,-1
+                    CMP AH,3
+                    JNE CONTINUA_LINHA
+                        XOR DI,DI
+                        ADD BX,9
+                        XOR AX,AX
+                        MOV AL,DL
+                        ADD DI,AX
+                        XOR AX,AX
+                    CONTINUA_LINHA:
+            LOOP PROXMATRIZ3X3
+            inc DH
+            CMP DH,3
+            JNE PROXIMACOLUNA3
+                XOR AX,AX
+                ADD DL,3
+                MOV AL,DL
+                MOV DI,AX
+                XOR AX,AX
+                XOR BX,BX
+                XOR DH,DH
+            PROXIMACOLUNA3:
+            CALL restaura_vetoraux
+            POP CX
+
+        LOOP TESTE3x3
+
+
+        reg_pop
+        MOV flag,1
+        ret
+        INVALIDO:
+            POP CX
+        INVALIDOINCONPLETA:
+            CALL restaura_vetoraux
+            reg_pop
+            MOV flag,0
+            ret
+
+    confere_vitoria endp
+
+
+    restaura_vetoraux proc
+        reg_push
+
+        XOR BX,BX
+        MOV AL,31h
+        restauracao:
+            MOV vetor_aux[BX],AL
+            inc AL
+            inc BX
+        cmp BX,9
+        jne restauracao
+
+        reg_pop
+        ret
+
+    restaura_vetoraux endp
+
+    valores_imutaveis proc
+        reg_push
+
+        MOV CX,9
+        XOR BX,BX
+        MOV DI,-1
+        XOR SI,SI
+        
+        
+        PEGAVALORES:
+
+            PROXLINHAVAL:
+                inc DI
+                CMP DI,9
+                JE LINHACOMPLETA
+                CMP MATRIZ[BX][DI],' '
+            JE PROXLINHAVAL
+                MOV vetor_val[SI],BX
+                ADD SI,2          
+                MOV vetor_val[SI],DI           
+                ADD SI,2
+            JMP PROXLINHAVAL
+            LINHACOMPLETA:
+            MOV DI,-1
+            ADD BX,9
+        LOOP PEGAVALORES
+
+
+        reg_pop
+        ret 
+    valores_imutaveis endp
 
     END MAIN
 
