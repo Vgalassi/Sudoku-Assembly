@@ -41,6 +41,7 @@
 
     main_msg db 'Sudoku Assembly$'
     controle_msg db 'Controles:$'
+    voltar_msg db 'Voltar$'
     clique_msg db 'Para por valores$'
     clique2_msg db 'na tabela, clique$'
     clique3_msg db 'no espaco e digite$'
@@ -114,6 +115,16 @@
         MOV DS,AX
         MOV ES,AX
 
+
+
+inicio:
+        XOR BX,BX
+        XOR AX,AX
+        XOR DX,DX
+        XOR SI,SI
+        XOR CX,CX
+
+
         MOV Ah,0
         MOV al,0Eh            ;Ativando modo se vídeo CGA 640x200
         int 10h
@@ -128,21 +139,51 @@
         MOV BH,1            ;Seleção de paleta
         MOV BL,0
         int 10h
+        
+        MOV AH,07
+        int 21h
 
-        LEA SI,matriz_pr2
-        CALL atribui_matriz
+        CMP AL,31h          ;Se o usuario digitar 1, usar predefinicao 1
+        JE pred1
 
+        CMP AL,32h          ;Se o usuario digitar 2,usar predefinicao 2
+        JE pred2
+
+        CMP AL,35h          ;Se o usuario digitar 5, sair do programa
+        JE FINAL 
+
+        JMP inicio
+
+        pred1:
+            LEA SI,matriz_pr1       ;atribuindo matriz pred 1 para a matriz principal
+            JMP ATRIBUIR
+        pred2:
+            LEA SI,matriz_pr2       ;atribuindo a matriz pred 2 para a matriz principal
+            JMP ATRIBUIR
+        final:
+            JMP FIM
+        
+
+    ATRIBUIR:
+
+        CALL atribui_matriz          ;Procedimento de atribuir matriz em SI para a matriz principal
+        
         MOV AH,02
-        MOV DH,1               ;Posicionando cursor no meio superior (linha 1,coluna 32)
-        MOV DL,32
+        MOV DH,1
+        MOV DL,5
         MOV BH,0
         int 10h
+        Imprime_msg voltar_msg
 
-        Imprime_msg main_msg       ;Imprimindo "sudoku assembly"
+              
+        MOV DL,32
+        MOV BH,0                    ;Posicionando cursor no meio superior (linha 1,coluna 32)
+        int 10h
+
+        Imprime_msg main_msg       ;Imprimindo1 "sudoku assembly"
 
         MOV DH,7              ;Posicionando curso na esquerda (linha 7,coluna 1)
         MOV DL,1
-        MOV BH,0
         int 10h
 
         Imprime_msg controle_msg
@@ -196,6 +237,15 @@
                 TEST bx,1
         JZ CONTROLE                  ;Pular se não houver clique no mouse
                                      ;Valor inicial da coluna 214(+24)->430,Valor inicial da linha 36(+16)->180
+
+                CMP CX,85
+                JG GRADETEST
+                CMP DX,15           ;Testando se o clique está no botão de voltar
+                JG GRADETEST
+                JMP inicio          ;Se estiver, voltar para o inicio
+
+
+            GRADETEST:
                 CMP CX,214      
                 JL CONTROLE
                 CMP CX,430           ;Verificando se o clique do mouse está dentro da grade
@@ -249,7 +299,7 @@
         PUSH DX
         
         
-        CALL BANDEIRA
+        CALL BANDEIRA         ;Procedimento de imprimir tela de vitoria 
         
         MOV AH,4CH
         int 21h
