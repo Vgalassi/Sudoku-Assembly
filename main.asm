@@ -22,6 +22,17 @@
             db 2 dup(' '),'7','2',' ','6','9',2 dup(' ')
             db ' ','4',' ','5',' ','8',' ','7',' '
 
+    matriz_maker  db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')
+            db 9 dup (' ')    
+    
+
 
     matriz  db 9 dup (' ')
             db 9 dup (' ')
@@ -39,16 +50,23 @@
 
     vetor_aux db '1','2','3','4','5','6','7','8','9'   ;Vetor para validação de vitória
 
-    main_msg db 'Sudoku Assembly$'
+    main_msg db 'SUDOKU DO HEXA$'
+    maker_msg db 'CRIACAO DE SUDOKU(max 30 num)$'
     controle_msg db 'Controles:$'
-    clique_msg db 'Para por valores$'
-    clique2_msg db 'na tabela, clique$'
-    clique3_msg db 'no espaco e digite$'
-    clique4_msg db 'um valor entre 1 a 9$'
+    voltar_msg db 'Voltar$'
+    clique_msg db 'Para por valores',10,20h,'na tabela,clique',10,20h,'no espaco e digite',10,20h,'um valor entre 1 a 9$'
+    fim_msg db 'Pressione qualquer tecla para continuar$'
     Hexa db "HEXA<3$"
-    FraseVitoria db "PARABENS VOCE TROUXE O HEXA PARA O BRASIL$"    
+    FraseVitoria db "PARABENS VOCE TROUXE O HEXA PARA O BRASIL$" 
+    INICIOMSG db "Bem Vindo ao SUDOKU DO HEXA$"
+    OPCOES db "ESCOLHA ENTRE OS JOGOS ABAIXO$"
+    OP1    db "JOGO 1                     (1)   JOGO 2                    (2)$" 
+    OP2    db "JOGO PERSONALIZADO         (3)   CRIAR JOGO PERSONALIZADO  (4)$"
+    OP3    db "SAIR DO JOGO               (5)$"
+    OP4    db "PENTA$"   
 
-    flag db '?'
+    flag db '?'           ;flag para verificar se o usuario ganhou
+    flag_maker db 0       ;flag para verificar se o usuario esta no modo de criacao
 .code
     imp_espaco macro    ;Macro impressão de espaço
         PUSH AX
@@ -110,9 +128,20 @@
 .code
     main proc
 
-        MOV AX,@data       ;Movendo data para ax
+        MOV AX,@data       ;Movendo data para ax,ds,es
         MOV DS,AX
         MOV ES,AX
+
+
+
+inicio:
+        MOV flag_maker,0        ;Restaurar flag maker e variaveis
+        XOR BX,BX
+        XOR AX,AX
+        XOR DX,DX
+        XOR SI,SI
+        XOR CX,CX
+
 
         MOV Ah,0
         MOV al,0Eh            ;Ativando modo se vídeo CGA 640x200
@@ -124,25 +153,94 @@
         MOV BL,0
         int 10h
 
+
+
+        CALL TELAINICIAL    ;Procedimento de imprimir tela inicial
+
+        
+        MOV AH,07           ;Esperando leitura de controle
+        int 21h
+
+        PUSH AX
+        MOV Ah,0
+        MOV al,0Eh            ;Ativando modo se vídeo CGA 640x200
+        int 10h
+
         MOV AH,0BH
         MOV BH,1            ;Seleção de paleta
         MOV BL,0
         int 10h
+        POP AX
 
-        LEA SI,matriz_pr2
-        CALL atribui_matriz
+        CMP AL,31h          ;Se o usuario digitar 1, usar predefinicao 1
+        JE pred1
+
+        CMP AL,32h          ;Se o usuario digitar 2,usar predefinicao 2
+        JE pred2
+
+        CMP AL,33h          ;Se o usuario digitar 3, jogar jogo personalizado
+        JE playmaker
+
+        CMP AL,34h          ;Se o usuarui digitar 4, entrar no mode de criacao
+        JE make
+
+        CMP AL,35h          ;Se o usuario digitar 5, sair do programa
+        JE FINAL 
+
+        JMP inicio 
+
+        pred1:
+            LEA SI,matriz_pr1       ;atribuindo matriz pred 1 para a matriz principal
+            JMP ATRIBUIR
+        pred2:
+            LEA SI,matriz_pr2       ;atribuindo a matriz pred 2 para a matriz principal
+            JMP ATRIBUIR
+        playmaker:
+            LEA SI,matriz_maker       ;atribuindo a matriz maker para a matriz principal
+            JMP ATRIBUIR
+        make:
+            LEA SI,matriz_maker
+            MOV flag_maker,1       ;Se o modo de criacao for ativado, flag maker = 1
+            MOV DH,5               ;Posição da matriz (linha 5,coluna 26)
+            MOV DL,26
+            MOV BH,0
+            CALL imprimematriz
+            CALL grade                ;procedimento de imprimir matriz e grade
+            MOV AH,02
+            MOV DH,1
+            MOV DL,26
+            MOV BH,0                    ;Posicionando cursor no meio superior (linha 1,coluna 26)
+            int 10h
+            Imprime_msg maker_msg       ;Imprimindo mensagem que indica mode criacao
+            JMP pulaatribuição
+
+        final:
+            JMP PROG_FIM                ;Pular para o encerramento do programa
+        
+
+    ATRIBUIR:
+        
+        CALL atribui_matriz          ;Procedimento de atribuir matriz em SI para a matriz principal
+    
 
         MOV AH,02
-        MOV DH,1               ;Posicionando cursor no meio superior (linha 1,coluna 32)
+        MOV DH,1
         MOV DL,32
-        MOV BH,0
+        MOV BH,0                    ;Posicionando cursor no meio superior (linha 1,coluna 32)
         int 10h
 
         Imprime_msg main_msg       ;Imprimindo "sudoku assembly"
 
+pulaatribuição:
+
+        MOV DL,5
+        MOV BH,0
+        int 10h
+        Imprime_msg voltar_msg     ;Imprimindo msg/botao de voltar
+
+              
         MOV DH,7              ;Posicionando curso na esquerda (linha 7,coluna 1)
         MOV DL,1
-        MOV BH,0
         int 10h
 
         Imprime_msg controle_msg
@@ -152,20 +250,9 @@
 
         Imprime_msg clique_msg
 
-        inc DH
-        int 10h
 
-        Imprime_msg clique2_msg
-
-        inc DH
-        int 10h
-
-        Imprime_msg clique3_msg
-
-        inc DH
-        int 10h
-
-        Imprime_msg clique4_msg
+        CMP flag_maker,1          ;Verificando se esta no modo criacao
+        JE CONTROLE
 
 
         CALL valores_imutaveis   ;Chamar procedimento para guardar valores imutaveís no veto val
@@ -196,6 +283,15 @@
                 TEST bx,1
         JZ CONTROLE                  ;Pular se não houver clique no mouse
                                      ;Valor inicial da coluna 214(+24)->430,Valor inicial da linha 36(+16)->180
+
+                CMP CX,85
+                JG GRADETEST
+                CMP DX,15           ;Testando se o clique está no botão de voltar
+                JG GRADETEST
+                JMP inicio          ;Se estiver, voltar para o inicio
+
+
+            GRADETEST:
                 CMP CX,214      
                 JL CONTROLE
                 CMP CX,430           ;Verificando se o clique do mouse está dentro da grade
@@ -232,7 +328,9 @@
 
                     MOV AH,02           ;Movendo o cursor para posição convertida( o cursor se move por char)  
                     int 10h
-                CALL coloca_valor       ;função de colocar valor na tabela 
+                CALL coloca_valor       ;função de colocar valor na tabela
+                CMP flag_maker,1
+                JE CONTROLE
                 CALL confere_vitoria    ;Função de checar se o sudoku está certo
                 CMP flag,1
                 JE FIM                  ;Se o sudoku estiver certo, pular para o fim
@@ -241,28 +339,47 @@
 
         FIM:            ;fim do programa
 
-
-        mov ax, 3        ;clear screen
+        MOV Ah,0
+        MOV al,0Eh            ;Ativando modo se vídeo CGA 640x200
         int 10h
 
-        XOR DX,DX
-        PUSH DX
+        MOV AH,02
+        MOV DH,6              ;Posicionando cursor no meio superior (linha 1,coluna 32)
+        MOV DL,19
+        MOV BH,0
+        int 10h
+
+        Imprime_msg FraseVitoria  
+
+        MOV DH,10
+        int 10h
+        Imprime_msg fim_msg
+
+        CALL BANDEIRA         ;Procedimento de imprimir bandeira 
+
         
+        MOV DH,17              ;Posicionando cursor no meio superior (linha 17,coluna 36)
+        MOV DL,36
+        int 10h
+
+        Imprime_msg Hexa        
         
-        CALL BANDEIRA
-        
-        MOV AH,4CH
+        MOV AH,07             ;Aguardando o usuario pressione
         int 21h
+
+        JMP inicio
     
 
-
-    MOV AH,4ch
+    PROG_FIM:
+    MOV AH,4ch              ;fim do programa 
     int 21h
 
     main endp
 
 
+
     ;=== Procedimento de imprimir grade do sudoku ===
+    ;Imprime a grade do sudoku,alternando entre cores a cada 3 impressões 
     
     grade proc
         reg_push
@@ -292,7 +409,7 @@
             CMP DX,180
         JLE PROXPIXELINHAS      
 
-        MOV DX,36             
+        MOV DX,36              ;Reinicializando(DX = linha incial)(CX = coluna inicial)
         MOV CX,214 
         XOR BX,BX
         MOV AL,1
@@ -313,7 +430,7 @@
                 MOV AL,1         ;Muda de cor para a terceira,sexta e nona coluna
                 XOR BX,BX
             TROCACORCOL:
-            CMP CX,430
+            CMP CX,430          ;Imprime até a coluna 430
         JLE PROXPIXELCOL
 
             reg_pop
@@ -405,8 +522,31 @@
         MOV CL,3
         DIV CL
         MOV SI,AX
-
         XOR DI,DI
+
+        CMP flag_maker,1           ;Verificando se está no modo criacao(pular etapa se nao estiver
+        JNE VALIDACAOPOSICAO
+        MOV DI,-1
+        XOR CX,CX
+            CONTANOTESPACO:
+                CMP DI,81
+                JE CONTAGEMFEITA
+                INC DI
+                CMP matriz_maker[DI],' '         ;Contando quanto caracteres não espaco tem na matriz
+                JE CONTANOTESPACO
+                inc CL
+            JMP CONTANOTESPACO
+
+            CONTAGEMFEITA:
+                CMP CL,30                       ;Se tiver 30 nao deixar mais o usuario editar
+                JE CONFEREESPACO
+                JMP pulavalidacaopos
+
+            CONFEREESPACO:
+                CMP matriz_maker[BX][SI],' '    ;Se contador de numero = 30, mas espaco editado carrega um numero, deixar usuario editar
+                JE FIMCOLOCAVALOR
+                JMP pulavalidacaopos
+        
         VALIDACAOPOSICAO:            ;Verificando se o valor não é um valor imutável
             CMP BX,vetor_val[DI]
             JNE POSDIFERENTE         ; verifica se o endereço do valor não esta em vetor aux
@@ -416,10 +556,12 @@
             JMP FIMCOLOCAVALOR
         POSDIFERENTE:
         ADD DI,2
-        POSDIFERENTE2:
+        POSDIFERENTE2:              ;Indo para o proximo endereco do vetor_val
         ADD DI,2
         CMP DI,120
         JNE VALIDACAOPOSICAO
+
+        pulavalidacaopos:
 
 
         MOV AH,02
@@ -430,6 +572,8 @@
         
         imp_back
     NOTNUM:
+        CMP AL,' '
+        JE ESPACOIN
         MOV AH,07           ;Lendo o input (sem echo)
         int 21h
         CMP Al,31h          ;Verificando se o input é válido (de 1 a 9)
@@ -437,6 +581,7 @@
         CMP AL,39h
         JG NOTNUM
 
+    ESPACOIN:
         XOR CX,CX
         MOV CL,AL
 
@@ -444,13 +589,17 @@
         MOV Dl,AL
         int 21h
 
-        
+        imp_back
+
+        CMP flag_maker,1         ;Atribuir para a matriz maker se estiver no modo de criacao
+        JE atribuipmaker
         
         MOV MATRIZ[bx][si],CL    ;Colocando o valor na matriz
+        JMP FIMCOLOCAVALOR
 
-        MOV AH,02
-        MOV Dl,8h                ;Backspace
-        int 21h
+    atribuipmaker:
+        MOV matriz_maker[BX][SI],CL
+        
 
 FIMCOLOCAVALOR:
         reg_pop                 ;Recuperando valores iniciais
@@ -658,24 +807,13 @@ FIMCOLOCAVALOR:
         ret 
     valores_imutaveis endp
     
+
+    ;=== Procedimento de imprimir bandeira do Brasil ===
+    ;Imprimi a bandeira do brasil na região inferior da tela
+    ;Entrada:
+    ;N/A
     BANDEIRA proc
     reg_push
-
-    ;640x200
-        MOV ah,00h
-        MOV al,0eh
-        int 10h
-
-
-        MOV AH,02
-        MOV DH,6              ;Posicionando cursor no meio superior (linha 1,coluna 32)
-        MOV DL,17
-        MOV BH,0
-        int 10h
-
-        mov ah,09h
-        lea dx,FraseVitoria
-        int 21h
 
     ;VERDE PROC
 
@@ -686,9 +824,7 @@ FIMCOLOCAVALOR:
         mov dx,103
         mov al,2
 
-
-
-    linhavertical1:
+    linhavertical1:                  ;Linha verde esquerda
         int 10h
         inc dx
         cmp dx,181
@@ -701,7 +837,7 @@ FIMCOLOCAVALOR:
         mov cx,160
         mov dx,103
         mov al,2
-    linhahorizontal1:
+    linhahorizontal1:                ;Linha verde superior
         int 10h
         inc cx
         cmp cx,467
@@ -712,7 +848,7 @@ FIMCOLOCAVALOR:
         mov cx,160
         mov dx,180
         mov al,2
-    linhahorizontal2:
+    linhahorizontal2:               ;Linha verde inferior
         int 10h
         inc cx
         cmp cx,467
@@ -723,7 +859,7 @@ FIMCOLOCAVALOR:
         mov ah,0CH
         mov cx,467
         mov dx,103
-        mov al,2
+        mov al,2                    ;Linha verde direita
     linhavertical2:
         int 10h
         inc dx
@@ -741,7 +877,7 @@ FIMCOLOCAVALOR:
         mov al,14
     linha:
         int 10h
-        inc cx
+        inc cx                                   ;Linha amarela inferior esquerda
         int 10h
         inc cx
         int 10h
@@ -768,7 +904,7 @@ FIMCOLOCAVALOR:
         int 10h
         inc cx
         int 10h
-        inc cx
+        inc cx                        ;Linha amarela superior direita
         int 10h
         inc cx
         
@@ -783,14 +919,14 @@ FIMCOLOCAVALOR:
 
         mov ah,0CH
         mov cx,312
-        mov dx,179
+        mov dx,179                  
         mov al,14
     linha2:
         int 10h
         inc cx
         int 10h
         inc cx
-        int 10h
+        int 10h                                     ;Linha amarela superior direita
         inc cx
         int 10h
         inc cx
@@ -808,7 +944,7 @@ FIMCOLOCAVALOR:
         mov dx,141
         mov al,14
     linha3:
-        int 10h
+        int 10h                                     ;Linha amarela superior esquerda
         inc cx
         int 10h
         inc cx
@@ -838,7 +974,7 @@ FIMCOLOCAVALOR:
         int 10h
         inc dx
         cmp dx,160
-        jne quadrado
+        jne quadrado      ;Loop de imprimir quadrado
 
         mov dx,123
         inc cx
@@ -852,13 +988,76 @@ FIMCOLOCAVALOR:
     MOV BH,0
     int 10h
 
-    mov ah,09h
-    lea dx,Hexa
-    int 21h
 
     reg_pop
     ret
     BANDEIRA endp
+
+    TELAINICIAL proc               ;proc para iniciar a tela de vitória 
+    
+    reg_push
+    
+    ;640x200        
+        MOV ah,00h                      ;iniciando o modo de video 
+        MOV al,0eh                      ;
+        int 10h                         ;
+
+
+        MOV AH,02                       ;Posicionando cursor no meio superior (linha 1,coluna 32)
+        MOV DH,2                        ;
+        MOV DL,12                       ;
+        MOV BH,0                        ;
+        int 10h                         ;
+
+
+        Imprime_msg INICIOMSG
+
+
+        MOV AH,02                       ;Posicionando cursor no meio superior (linha 1,coluna 32)
+        MOV DH,4                        ;
+        MOV DL,12                       ;
+        MOV BH,0                        ;
+        int 10h                         ;
+
+                                ;imprimindo msg de opcoes
+       Imprime_msg OPCOES
+
+        MOV AH,02                       ;Posicionando cursor no meio superior (linha 1,coluna 32)
+        MOV DH,6                        ;
+        MOV DL,12                       ;
+        MOV BH,0                        ;
+        int 10h                         ;
+
+                                ;imprimindo msg de inicio
+        Imprime_msg OP1
+
+        MOV AH,02                       ;Posicionando cursor no meio superior (linha 1,coluna 32)
+        MOV DH,8                        ;
+        MOV DL,12                       ;
+        MOV BH,0                        ;
+        int 10h                         ;
+
+                                ;imprimindo msg de inicio
+        Imprime_msg OP2
+        
+
+        MOV AH,02                       ;Posicionando cursor no meio superior (linha 1,coluna 32)
+        MOV DH,10                       ;
+        MOV DL,12                       ;
+        MOV BH,0                        ;
+        int 10h                         ;
+
+                                ;imprimindo msg de inicio
+        Imprime_msg OP3                ;
+        
+
+    CALL BANDEIRA
+    Imprime_msg OP4
+
+    reg_pop
+    ret
+
+    TELAINICIAL endp
 
     ;=== Procedimento de atribuir valor para matriz principal
     ;Atribui uma matriz 9x9 para a matriz principal
@@ -869,11 +1068,11 @@ FIMCOLOCAVALOR:
     reg_push
 
     CLD 
-    XOR BX,BX
+    XOR BX,BX                   ;Loop de 81
     MOV CX,81
     loop_atribuicao:
-        LODSB
-        MOV matriz[BX],AL
+        LODSB                   ;Armazenar em AL e percorrer a matriz 
+        MOV matriz[BX],AL       ;Mover al para a matriz principal
         inc BX
     LOOP loop_atribuicao
 
