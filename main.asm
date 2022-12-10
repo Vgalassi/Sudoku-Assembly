@@ -1,3 +1,4 @@
+TITLE Gabriel Hideki Yamamoto 22003967 Vinicius Henrique Galassi 22005768
 .model small
 .stack 14h
 .data
@@ -143,8 +144,9 @@ inicio:
         XOR CX,CX
 
 
+
         MOV Ah,0
-        MOV al,0Eh            ;Ativando modo se vídeo CGA 640x200
+        MOV al,0Eh            ;Ativando modo se vídeo VGA 640x200
         int 10h
 
 
@@ -156,6 +158,14 @@ inicio:
 
 
         CALL TELAINICIAL    ;Procedimento de imprimir tela inicial
+
+        ZERAVAL:
+            MOV vetor_val[BX],' '       ;reinicializando vetor val
+            ADD bx,2
+        CMP BX,120
+        JNE ZERAVAL
+
+        XOR BX,BX
 
         
         MOV AH,07           ;Esperando leitura de controle
@@ -291,7 +301,7 @@ pulaatribuição:
                 JMP inicio          ;Se estiver, voltar para o inicio
 
 
-            GRADETEST:
+            GRADETEST:          ;Matriz começa a printar linha 5  coluna 26
                 CMP CX,214      
                 JL CONTROLE
                 CMP CX,430           ;Verificando se o clique do mouse está dentro da grade
@@ -302,7 +312,7 @@ pulaatribuição:
                 JG CONTROLE
                                     ;Verificando se o clique está dentro da coluna
                 XOR AX,AX
-                MOV AH,3
+                MOV AH,3             ;AH = linha em char
                 MOV AL,24            ;Convertendo a posição do mouse em posição de char
                 MOV BX,36
             
